@@ -1,0 +1,20 @@
+<aside class="col-md-3">
+  <ul class="nav flex-column nav-pills mb-4">
+    <li class="nav-item">
+      <a class="nav-link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}"
+         href="{% url 'users:profile' %}">Профиль</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {% if request.resolver_match.url_name == 'wallets' %}active{% endif %}"
+         href="{% url 'finances:wallets' %}">Кошельки</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {% if request.resolver_match.url_name == 'transactions' %}active{% endif %}"
+         href="{% url 'finances:transactions' %}">Операции</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {% if request.resolver_match.namespace == 'reports' %}active{% endif %}"
+         href="{% url 'reports:list' %}">Отчёты</a>
+    </li>
+  </ul>
+</aside>

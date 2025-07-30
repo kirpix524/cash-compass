@@ -1,8 +1,9 @@
 {% extends 'core/base.html' %}
 
 {% block content %}
-<div class="row justify-content-center mt-5">
-  <div class="col-md-6">
+<div class="row mt-5">
+  {% include 'core/sidebar.html' %}
+  <div class="col-md-9">
     <h2 class="mb-4">Личный кабинет</h2>
     <form method="post" class="mb-4">
       {% csrf_token %}
