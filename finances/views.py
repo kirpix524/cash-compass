@@ -1,7 +1,7 @@
 from collections import defaultdict
 from typing import Any, Dict
 from django.views.generic import ListView
-from django.views.generic.edit import FormMixin
+from django.views.generic.edit import FormMixin, UpdateView
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Prefetch
@@ -79,3 +79,16 @@ class CategoryListView(LoginRequiredMixin, FormMixin, ListView):
         else:
             messages.error(request, 'Ошибка загрузки файла.')
         return redirect(self.success_url)
+
+
+class CategoryUpdateView(LoginRequiredMixin, UpdateView):
+    model = Category
+    fields: list[str] = ['name', 'parent']
+    template_name: str = "finances/category_modal_form.html"  # мы не будем рендерить этот шаблон напрямую
+    success_url = reverse_lazy('finances:categories')
+
+    def form_valid(self, form):
+        print("[DEBUG] form=", form.cleaned_data)
+        response = super().form_valid(form)
+        messages.success(self.request, "Категория успешно обновлена")
+        return response

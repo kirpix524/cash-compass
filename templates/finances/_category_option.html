@@ -1,0 +1,7 @@
+{% load category_extras %}
+<option value="{{ category.guid }}" data-type="{{ category.category_type }}">
+  {{ '-'|repeat:level }} {{ category.name }}
+</option>
+{% for child in category.children_cache %}
+  {% include 'finances/_category_option.html' with category=child level=level|add:1 %}
+{% endfor %}

@@ -6,6 +6,16 @@
       <span class="me-1"></span>
     {% endif %}
     {{ category.name }}
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-primary ms-2 edit-category-btn"
+      data-guid="{{ category.guid }}"
+      data-name="{{ category.name }}"
+      data-parent="{% if category.parent %}{{ category.parent.guid }}{% endif %}"
+      data-type="{{ category.category_type }}"
+      data-edit-url="{% url 'finances:category_edit' category.guid %}"
+      aria-label="Редактировать категорию"
+    >⚙️</button>
     {% if children %}
       <ul class="ms-3 d-none">
         {% for child in children %}

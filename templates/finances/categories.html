@@ -1,5 +1,5 @@
 {% extends 'core/base.html' %}
-
+{% load static %}
 {% block content %}
 <div class="row mt-5">
   {% include 'core/sidebar.html' %}
@@ -38,13 +38,11 @@
     </ul>
   </div>
 </div>
-<script>
-  document.addEventListener('click', function(e) {
-    if (!e.target.matches('.toggle')) return;
-    const childList = e.target.parentElement.querySelector('ul');
-    if (!childList) return;
-    childList.classList.toggle('d-none');
-    e.target.textContent = childList.classList.contains('d-none') ? '[+]' : '[-]';
-  });
-</script>
+
+{%  include 'finances/_edit_category_modal.html' %}
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'finances/js/fill_edit_category_modal.js' %}" defer></script>
+  <script src="{% static 'finances/js/toggle_category_tree.js' %}" defer></script>
 {% endblock %}

@@ -1,0 +1,34 @@
+<div class="modal fade" id="categoryModal" tabindex="-1">
+    <div class="modal-dialog">
+      <form id="categoryEditForm" method="post">
+        {% csrf_token %}
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Редактировать категорию</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="modalCategoryName" class="form-label">Название</label>
+              <input type="text" id="modalCategoryName" name="name" class="form-control">
+            </div>
+            <div class="mb-3">
+              <label for="modalCategoryParent" class="form-label">Родительская категория</label>
+              <select id="modalCategoryParent" name="parent" class="form-select">
+                <option value="">— без родителя —</option>
+                {% for cat in expense_categories %}
+                  {% include 'finances/_category_option.html' with category=cat level=0 %}
+                {% endfor %}
+                {% for cat in income_categories %}
+                  {% include 'finances/_category_option.html' with category=cat level=0 %}
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-primary">Сохранить</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
