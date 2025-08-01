@@ -1,6 +1,7 @@
 import json
 from typing import IO
-from .models import Currency
+from .models import Currency, Category
+
 
 class CurrencyImporter:
     """
@@ -34,4 +35,51 @@ class CurrencyImporter:
             )
             if created:
                 self._created_count += 1
+        return self._created_count
+
+class CategoryImporter:
+    """
+    Сервис для импорта категорий из JSON-файла.
+    """
+    def __init__(self, file: IO) -> None:
+        self._file = file
+        self._created_count = 0
+
+    def import_categories(self) -> int:
+        data = json.load(self._file)
+        # создаём маппинг guid → запись entries
+        entries = {
+            item["entries"]["guid"]: item["entries"]
+            for item in data.get("CATEGORY", [])
+            if "entries" in item
+        }
+        processed = set()
+
+        def save_node(guid):
+            if guid in processed or guid not in entries:
+                return
+            entry = entries[guid]
+            parent = None
+            parent_guid = entry.get("parent")
+            if parent_guid:
+                save_node(parent_guid)
+                parent = Category.objects.get(guid=parent_guid)
+            _, created = Category.objects.update_or_create(
+                guid=guid,
+                defaults={
+                    "name": entry.get("name"),
+                    "state": entry.get("state"),
+                    "category_type": entry.get("type"),
+                    "parent": parent,
+                    "_acc": entry.get("acc"),
+                    "_version": entry.get("ver"),
+                }
+            )
+            if created:
+                self._created_count += 1
+            processed.add(guid)
+
+        for guid in entries:
+            save_node(guid)
+
         return self._created_count

@@ -9,6 +9,10 @@
          href="{% url 'finances:currencies' %}">Валюты</a>
     </li>
     <li class="nav-item">
+      <a class="nav-link {% if request.resolver_match.url_name == 'categories' %}active{% endif %}"
+         href="{% url 'finances:categories' %}">Категории</a>
+    </li>
+    <li class="nav-item">
       <a class="nav-link {% if request.resolver_match.url_name == 'wallets' %}active{% endif %}"
          href="{% url 'finances:wallets' %}">Кошельки</a>
     </li>

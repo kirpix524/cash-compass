@@ -1,0 +1,50 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="row mt-5">
+  {% include 'core/sidebar.html' %}
+  <div class="col-md-9">
+    <h2 class="mb-4">Категории</h2>
+
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+
+    <form method="post" enctype="multipart/form-data" class="mb-4">
+      {% csrf_token %}
+      <div class="mb-3">
+        {{ form.file.label_tag }}
+        {{ form.file }}
+      </div>
+      <button type="submit" class="btn btn-primary">Загрузить из файла</button>
+    </form>
+
+    <h3>Расходы</h3>
+    <ul>
+      {% for category in expense_categories %}
+        {% include 'finances/_category_tree.html' with category=category %}
+      {% empty %}
+        <li>Категорий расходов нет.</li>
+      {% endfor %}
+    </ul>
+
+    <h3 class="mt-4">Доходы</h3>
+    <ul>
+      {% for category in income_categories %}
+        {% include 'finances/_category_tree.html' with category=category %}
+      {% empty %}
+        <li>Категорий доходов нет.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+<script>
+  document.addEventListener('click', function(e) {
+    if (!e.target.matches('.toggle')) return;
+    const childList = e.target.parentElement.querySelector('ul');
+    if (!childList) return;
+    childList.classList.toggle('d-none');
+    e.target.textContent = childList.classList.contains('d-none') ? '[+]' : '[-]';
+  });
+</script>
+{% endblock %}

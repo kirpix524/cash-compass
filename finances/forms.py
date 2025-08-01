@@ -5,3 +5,9 @@ class CurrencyUploadForm(forms.Form):
         label="JSON файл",
         help_text="Выберите JSON-файл с валютами",
     )
+
+class CategoryUploadForm(forms.Form):
+    file: forms.FileField = forms.FileField(
+        label="JSON файл",
+        help_text="Выберите JSON-файл с категориями",
+    )

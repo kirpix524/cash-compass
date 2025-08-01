@@ -1,0 +1,17 @@
+<li>
+  {% with children=category.children_cache %}
+    {% if children %}
+      <span class="toggle me-1" style="cursor: pointer;">[+]</span>
+    {% else %}
+      <span class="me-1"></span>
+    {% endif %}
+    {{ category.name }}
+    {% if children %}
+      <ul class="ms-3 d-none">
+        {% for child in children %}
+          {% include 'finances/_category_tree.html' with category=child %}
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+</li>
