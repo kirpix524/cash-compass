@@ -1,16 +1,17 @@
 import uuid
 from collections import defaultdict
+from types import SimpleNamespace
 from typing import Any, Dict
 from django.views.generic import ListView
 from django.views.generic.edit import FormMixin, UpdateView, CreateView
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Sum
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
 
 
-from .models import Currency, Category
+from .models import Currency, Category, WalletGroup, Wallet
 from .forms import CurrencyUploadForm, CategoryUploadForm
 from .services import CurrencyImporter, CategoryImporter
 
@@ -105,3 +106,40 @@ class CategoryCreateView(LoginRequiredMixin, CreateView):
             form.instance.guid = uuid.uuid4().hex
         form.instance.category_type = self.request.POST.get('category_type')
         return super().form_valid(form)
+
+class WalletListView(ListView):
+    template_name = 'finances/wallets.html'
+    context_object_name = 'wallet_groups'
+
+    def get_queryset(self):
+        user = self.request.user
+
+        # 1) Берём все настоящие группы и аннотируем их total_balance
+        groups = list(
+            WalletGroup.objects
+                .filter(state='ACTIVE', user=user)
+                .annotate(total_balance=Sum('wallets__current_balance'))
+                .prefetch_related('wallets')
+        )
+
+        # 2) Находим все кошельки без группы
+        ungrouped_qs = Wallet.objects.filter(
+            group__isnull=True,
+            state='ACTIVE',
+            user=user
+        )
+
+        if ungrouped_qs.exists():
+            # 3) Считаем сумму балансов «без группы»
+            total = ungrouped_qs.aggregate(sum=Sum('current_balance'))['sum'] or 0
+            # 4) Собираем виртуальный объект группы
+            dummy = SimpleNamespace(
+                name='Без группы',
+                total_balance=total,
+                wallets=list(ungrouped_qs),   # сразу список, чтобы в шаблоне делать for w in group.wallets
+                is_virtual=True,
+            )
+            # 5) Вставляем его в начало списка групп
+            groups.insert(0, dummy)
+
+        return groups

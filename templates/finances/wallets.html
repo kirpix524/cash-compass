@@ -1,10 +1,11 @@
-{% extends 'core/base.html' %}
+{% extends 'base.html' %}
 
 {% block content %}
-  <div class="row mt-5">
-    {% include 'core/sidebar.html' %}
-    <div class="col-md-9">
-      <h2 class="mb-4">Кошельки</h2>
-    </div>
-  </div>
+  <h1>Мои кошельки</h1>
+
+  <ul class="list-unstyled">
+    {% for group in wallet_groups %}
+      {% include 'finances/_wallet_tree.html' with group=group %}
+    {% endfor %}
+  </ul>
 {% endblock %}

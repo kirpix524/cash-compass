@@ -1,4 +1,5 @@
 import uuid
+from decimal import Decimal
 from typing import Optional
 from django.db import models
 from django.conf import settings
@@ -110,3 +111,107 @@ class Category(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+WALLET_STATE_CHOICES = [
+    ('ACTIVE', 'Active'),
+    ('DELETED', 'Deleted'),
+]
+
+WALLET_TYPE_CHOICES = [
+    ('WALLET_GROUP', 'Wallet Group'),
+    ('WALLET', 'Wallet'),
+]
+
+class WalletGroup(models.Model):
+    guid = models.CharField(max_length=64, unique=True, editable=False)
+    name = models.CharField(max_length=200)
+    img = models.CharField(max_length=100, blank=True, null=True)
+    state = models.CharField(
+        max_length=10,
+        choices=WALLET_STATE_CHOICES,
+        default='ACTIVE'
+    )
+    _version = models.IntegerField(default=0)
+    item_type = models.CharField(
+        max_length=20,
+        choices=WALLET_TYPE_CHOICES,
+        default='WALLET_GROUP',
+        editable=False
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='wallet_groups'
+    )
+
+    class Meta:
+        ordering = ['name']
+
+    def save(self, *args, **kwargs):
+        if not self.guid:
+            self.guid = uuid.uuid4().hex
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+
+class Wallet(models.Model):
+    guid = models.CharField(max_length=64, unique=True, editable=False)
+    name = models.CharField(max_length=200)
+    img = models.CharField(max_length=100, blank=True, null=True)
+    state = models.CharField(
+        max_length=10,
+        choices=WALLET_STATE_CHOICES,
+        default='ACTIVE'
+    )
+    _version = models.IntegerField(default=0)
+    item_type = models.CharField(
+        max_length=20,
+        choices=WALLET_TYPE_CHOICES,
+        default='WALLET',
+        editable=False
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='wallets'
+    )
+
+    group = models.ForeignKey(
+        WalletGroup,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name='wallets'
+    )
+    currency = models.ForeignKey(
+        'Currency',
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name='wallets'
+    )
+    current_balance = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name="Текущий баланс"
+    )
+
+    class Meta:
+        ordering = ['name']
+
+    def save(self, *args, **kwargs):
+        if not self.guid:
+            self.guid = uuid.uuid4().hex
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+class Transaction(models.Model):
+    wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE, related_name='transactions')
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+    # … остальные поля …

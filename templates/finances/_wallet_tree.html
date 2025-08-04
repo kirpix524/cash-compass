@@ -1,0 +1,19 @@
+<li>
+  <div class="d-flex justify-content-between align-items-baseline">
+    <span class="fw-bold">{{ group.name }}</span>
+    <span class="badge bg-secondary">
+      {{ group.total_balance|default:"0.00" }}
+    </span>
+  </div>
+
+  {% if group.wallets %}
+    <ul class="ms-3 list-unstyled">
+      {% for wallet in group.wallets %}
+        <li class="d-flex justify-content-between">
+          <span>{{ wallet.name }}</span>
+          <span class="text-muted">{{ wallet.current_balance }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</li>
