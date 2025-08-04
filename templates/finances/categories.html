@@ -19,7 +19,12 @@
       <button type="submit" class="btn btn-primary">Загрузить из файла</button>
     </form>
 
-    <h3>Расходы</h3>
+    <div class="d-flex align-items-center mb-2">
+      <h3 class="mb-0">Расходы</h3>
+      <button type="button" class="btn btn-sm btn-success ms-3" id="addExpenseCategoryBtn">
+        Добавить категорию
+      </button>
+    </div>
     <ul>
       {% for category in expense_categories %}
         {% include 'finances/_category_tree.html' with category=category %}
@@ -28,7 +33,12 @@
       {% endfor %}
     </ul>
 
-    <h3 class="mt-4">Доходы</h3>
+    <div class="d-flex align-items-center mt-4 mb-2">
+      <h3 class="mb-0">Доходы</h3>
+      <button type="button" class="btn btn-sm btn-success ms-3" id="addIncomeCategoryBtn">
+        Добавить категорию
+      </button>
+    </div>
     <ul>
       {% for category in income_categories %}
         {% include 'finances/_category_tree.html' with category=category %}
@@ -40,9 +50,11 @@
 </div>
 
 {%  include 'finances/_edit_category_modal.html' %}
+{%  include 'finances/_add_category_modal.html' %}
 {% endblock %}
 
 {% block extra_js %}
+  <script src="{% static 'finances/js/fill_add_category_modal.js' %}" defer></script>
   <script src="{% static 'finances/js/fill_edit_category_modal.js' %}" defer></script>
   <script src="{% static 'finances/js/toggle_category_tree.js' %}" defer></script>
 {% endblock %}

@@ -1,7 +1,8 @@
+import uuid
 from collections import defaultdict
 from typing import Any, Dict
 from django.views.generic import ListView
-from django.views.generic.edit import FormMixin, UpdateView
+from django.views.generic.edit import FormMixin, UpdateView, CreateView
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Prefetch
@@ -30,7 +31,7 @@ class CurrencyListView(LoginRequiredMixin, FormMixin, ListView):
         form = self.get_form()
         if form.is_valid():
             uploaded_file = form.cleaned_data['file']
-            importer = CurrencyImporter(uploaded_file)
+            importer = CurrencyImporter(uploaded_file, request.user)
             created = importer.import_currencies()
             messages.success(request, f'Загружено {created} новых валют.')
         else:
@@ -73,7 +74,7 @@ class CategoryListView(LoginRequiredMixin, FormMixin, ListView):
     def post(self, request, *args, **kwargs):
         form = self.get_form()
         if form.is_valid():
-            importer = CategoryImporter(form.cleaned_data['file'])
+            importer = CategoryImporter(form.cleaned_data['file'], request.user)
             count = importer.import_categories()
             messages.success(request, f'Загружено {count} новых категорий.')
         else:
@@ -84,11 +85,23 @@ class CategoryListView(LoginRequiredMixin, FormMixin, ListView):
 class CategoryUpdateView(LoginRequiredMixin, UpdateView):
     model = Category
     fields: list[str] = ['name', 'parent']
-    template_name: str = "finances/category_modal_form.html"  # мы не будем рендерить этот шаблон напрямую
+    template_name: str = "finances/category_modal_form.html"
     success_url = reverse_lazy('finances:categories')
 
     def form_valid(self, form):
-        print("[DEBUG] form=", form.cleaned_data)
         response = super().form_valid(form)
         messages.success(self.request, "Категория успешно обновлена")
         return response
+
+class CategoryCreateView(LoginRequiredMixin, CreateView):
+    model = Category
+    fields: list[str] = ['name', 'parent']
+    template_name: str = "finances/category_modal_form.html"
+    success_url = reverse_lazy('finances:categories')
+
+    def form_valid(self, form):
+        form.instance.user = self.request.user
+        if not form.instance.guid:
+            form.instance.guid = uuid.uuid4().hex
+        form.instance.category_type = self.request.POST.get('category_type')
+        return super().form_valid(form)

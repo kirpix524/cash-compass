@@ -1,6 +1,7 @@
 import uuid
 from typing import Optional
 from django.db import models
+from django.conf import settings
 
 class Currency(models.Model):
     """
@@ -8,13 +9,15 @@ class Currency(models.Model):
     """
     guid: str = models.CharField(
         primary_key=True,
-        max_length=100,
+        max_length=40,
         editable=False,
         verbose_name="GUID валюты"
     )
-    acc: uuid.UUID = models.UUIDField(
-        verbose_name="GUID аккаунта",
-        help_text="Идентификатор счёта, к которому привязана валюта"
+    user: settings.AUTH_USER_MODEL = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="currencies",
+        verbose_name="Пользователь"
     )
     version: int = models.PositiveIntegerField(
         verbose_name="Версия записи",
@@ -30,10 +33,7 @@ class Currency(models.Model):
     )
     state: str = models.CharField(
         max_length=20,
-        choices=[
-            ("ACTIVE", "Активна"),
-            ("INACTIVE", "Неактивна"),
-        ],
+        choices=[("ACTIVE", "Активна"), ("INACTIVE", "Неактивна")],
         default="ACTIVE",
         verbose_name="Состояние"
     )
@@ -57,18 +57,21 @@ class Category(models.Model):
     Модель категории доходов/расходов.
     """
     guid: str = models.CharField(
-        max_length=100,
+        max_length=40,
         primary_key=True,
         editable=False,
         verbose_name="GUID категории"
     )
-    _acc: uuid.UUID = models.UUIDField(
-        verbose_name="GUID счёта",
-        help_text="Идентификатор аккаунта из источника"
+    user: settings.AUTH_USER_MODEL = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="categories",
+        verbose_name="Пользователь"
     )
     _version: int = models.PositiveIntegerField(
-        verbose_name="Версия записи",
-        help_text="ver из JSON"
+        verbose_name="Версия записи Efics",
+        help_text="Версия Efics из JSON",
+        default = 0
     )
     name: str = models.CharField(
         max_length=255,
@@ -76,22 +79,16 @@ class Category(models.Model):
     )
     state: str = models.CharField(
         max_length=20,
-        choices=[
-            ("ACTIVE", "Активна"),
-            ("DELETED", "Удалена"),
-        ],
+        choices=[("ACTIVE", "Активна"), ("DELETED", "Удалена")],
         default="ACTIVE",
         verbose_name="Состояние категории"
     )
     category_type: str = models.CharField(
         max_length=10,
-        choices=[
-            ("EXPENSE", "Расход"),
-            ("INCOME", "Доход"),
-        ],
+        choices=[("EXPENSE", "Расход"), ("INCOME", "Доход")],
         verbose_name="Тип категории"
     )
-    parent: Optional["Category"] = models.ForeignKey(
+    parent: "Category" = models.ForeignKey(
         "self",
         null=True,
         blank=True,
