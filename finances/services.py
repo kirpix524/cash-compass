@@ -1,8 +1,10 @@
 import json
 from typing import IO
 
+from django.db import transaction
+
 from users.models import User
-from .models import Currency, Category
+from .models import Currency, Category, WalletGroup, Wallet
 
 
 class CurrencyImporter:
@@ -96,5 +98,101 @@ class CategoryImporter:
 
         for guid in entries_map:
             save_node(guid)
+
+        return self._created_count
+
+class WalletImporter:
+    """
+    Сервис для импорта групп кошельков и кошельков из JSON-файла.
+    """
+
+    def __init__(self, file: IO, user: User) -> None:
+        self._file = file
+        self._user = user
+        self._created_count = 0
+
+    @transaction.atomic
+    def import_wallets(self) -> int:
+        """
+        Прочитает JSON, создаст/обновит все WalletGroup, затем все Wallet,
+        вернёт количество созданных записей.
+        """
+        data = json.load(self._file)
+
+        # 1) Собираем списки записей
+        groups_data = {
+            item["entries"]["guid"]: {
+                "entries": item["entries"],
+                "item_type": item.get("itemType", "WALLET_GROUP")
+            }
+            for item in data.get("WALLET_GROUP", [])
+            if "guid" in item.get("entries", {})
+        }
+        wallets_data = {
+            item["entries"]["guid"]: {
+                "entries": item["entries"],
+                "item_type": item.get("itemType", "WALLET")
+            }
+            for item in data.get("WALLET", [])
+            if "guid" in item.get("entries", {})
+        }
+
+        # 2) Сначала создаём/обновляем группы
+        for guid, rec in groups_data.items():
+            e = rec["entries"]
+            obj, created = WalletGroup.objects.update_or_create(
+                guid=guid,
+                user=self._user,
+                defaults={
+                    "name":        e.get("name"),
+                    "state":       e.get("state"),
+                    "type":        e.get("type"),
+                    "_version":    e.get("ver"),
+                    "item_type":   rec["item_type"],
+                    "image":       e.get("img"),
+                }
+            )
+            if created:
+                self._created_count += 1
+
+        # 3) Теперь — кошельки
+        for guid, rec in wallets_data.items():
+            e = rec["entries"]
+
+            # найдём группу (если есть)
+            grp = None
+            grp_guid = e.get("grp")
+            if grp_guid:
+                try:
+                    grp = WalletGroup.objects.get(guid=grp_guid, user=self._user)
+                except WalletGroup.DoesNotExist:
+                    grp = None
+
+            # найдём валюту
+            cur = None
+            cur_guid = e.get("cur")
+            if cur_guid:
+                try:
+                    cur = Currency.objects.get(guid=cur_guid, user=self._user)
+                except Currency.DoesNotExist:
+                    cur = None
+
+            obj, created = Wallet.objects.update_or_create(
+                guid=guid,
+                user=self._user,
+                defaults={
+                    "name":           e.get("name"),
+                    "state":          e.get("state"),
+                    "type":           e.get("type"),
+                    "_version":       e.get("ver"),
+                    "item_type":      rec["item_type"],
+                    "group":          grp,
+                    "currency":       cur,
+                    # текущий баланс будем считать/обновлять отдельно при транзакциях
+                    "image":          e.get("img"),
+                }
+            )
+            if created:
+                self._created_count += 1
 
         return self._created_count

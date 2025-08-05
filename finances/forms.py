@@ -11,3 +11,10 @@ class CategoryUploadForm(forms.Form):
         label="JSON файл",
         help_text="Выберите JSON-файл с категориями",
     )
+
+class WalletUploadForm(forms.Form):
+    file = forms.FileField(
+        label='Файл с кошельками (JSON)',
+        help_text='Загрузите .json с данными из вашего приложения',
+        widget=forms.ClearableFileInput(attrs={'accept': '.json'})
+    )

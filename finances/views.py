@@ -3,7 +3,7 @@ from collections import defaultdict
 from types import SimpleNamespace
 from typing import Any, Dict
 from django.views.generic import ListView
-from django.views.generic.edit import FormMixin, UpdateView, CreateView
+from django.views.generic.edit import FormMixin, UpdateView, CreateView, FormView
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Prefetch, Sum
@@ -12,8 +12,8 @@ from django.urls import reverse_lazy
 
 
 from .models import Currency, Category, WalletGroup, Wallet
-from .forms import CurrencyUploadForm, CategoryUploadForm
-from .services import CurrencyImporter, CategoryImporter
+from .forms import CurrencyUploadForm, CategoryUploadForm, WalletUploadForm
+from .services import CurrencyImporter, CategoryImporter, WalletImporter
 
 
 class CurrencyListView(LoginRequiredMixin, FormMixin, ListView):
@@ -107,14 +107,16 @@ class CategoryCreateView(LoginRequiredMixin, CreateView):
         form.instance.category_type = self.request.POST.get('category_type')
         return super().form_valid(form)
 
-class WalletListView(ListView):
+class WalletListView(LoginRequiredMixin, FormMixin, ListView):
     template_name = 'finances/wallets.html'
     context_object_name = 'wallet_groups'
+    form_class = WalletUploadForm
+    success_url = reverse_lazy('finances:wallets')
 
     def get_queryset(self):
         user = self.request.user
 
-        # 1) Берём все настоящие группы и аннотируем их total_balance
+        # 1) Берём все «реальные» группы
         groups = list(
             WalletGroup.objects
                 .filter(state='ACTIVE', user=user)
@@ -122,7 +124,7 @@ class WalletListView(ListView):
                 .prefetch_related('wallets')
         )
 
-        # 2) Находим все кошельки без группы
+        # 2) Кошельки без группы
         ungrouped_qs = Wallet.objects.filter(
             group__isnull=True,
             state='ACTIVE',
@@ -130,16 +132,23 @@ class WalletListView(ListView):
         )
 
         if ungrouped_qs.exists():
-            # 3) Считаем сумму балансов «без группы»
             total = ungrouped_qs.aggregate(sum=Sum('current_balance'))['sum'] or 0
-            # 4) Собираем виртуальный объект группы
             dummy = SimpleNamespace(
                 name='Без группы',
                 total_balance=total,
-                wallets=list(ungrouped_qs),   # сразу список, чтобы в шаблоне делать for w in group.wallets
+                wallets=list(ungrouped_qs),
                 is_virtual=True,
             )
-            # 5) Вставляем его в начало списка групп
             groups.insert(0, dummy)
 
         return groups
+
+    def post(self, request, *args, **kwargs):
+        form = self.get_form()
+        if form.is_valid():
+            importer = WalletImporter(form.cleaned_data['file'], request.user)
+            count = importer.import_wallets()
+            messages.success(request, f'Загружено {count} новых записей (группы + кошельки).')
+        else:
+            messages.error(request, 'Ошибка загрузки файла.')
+        return redirect(self.success_url)
