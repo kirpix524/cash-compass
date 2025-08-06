@@ -30,9 +30,9 @@
     <div class="d-flex align-items-center mb-2">
       <h3 class="mb-0">Группы кошельков</h3>
       <button
-        type="button"
-        class="btn btn-sm btn-success ms-3"
         id="addWalletGroupBtn"
+        class="btn btn-success ms-3"
+        data-create-url="{% url 'finances:walletgroup_create' %}"
       >
         Добавить группу
       </button>
@@ -67,5 +67,9 @@
   </div>
 </div>
 
-{# сюда можно подключить модалки для добавления/редактирования, если нужно #}
+{% include 'finances/_add_walletgroup_modal.html' with form=group_form %}
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'finances/js/fill_add_walletgroup_modal.js' %}" defer></script>
 {% endblock %}

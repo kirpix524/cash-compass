@@ -12,7 +12,7 @@ from django.urls import reverse_lazy
 
 
 from .models import Currency, Category, WalletGroup, Wallet
-from .forms import CurrencyUploadForm, CategoryUploadForm, WalletUploadForm
+from .forms import CurrencyUploadForm, CategoryUploadForm, WalletUploadForm, WalletGroupForm
 from .services import CurrencyImporter, CategoryImporter, WalletImporter
 
 
@@ -126,6 +126,7 @@ class WalletListView(LoginRequiredMixin, FormMixin, ListView):
         ctx = super().get_context_data(**kwargs)
         # Подмешиваем форму в контекст, чтобы её можно было вывести в шаблоне
         ctx['form'] = self.get_form()
+        ctx['group_form'] = WalletGroupForm()
         return ctx
 
     def get_queryset(self):
@@ -171,3 +172,18 @@ class WalletListView(LoginRequiredMixin, FormMixin, ListView):
         else:
             messages.error(request, f'Ошибка загрузки файла. {form.errors}')
         return redirect(self.success_url)
+
+class WalletGroupCreateView(LoginRequiredMixin, CreateView):
+    model = WalletGroup
+    form_class = WalletGroupForm
+    template_name = 'finances/walletgroup_modal_form.html'  # рендерится только в модалке - в шаблоне не используется
+    success_url = reverse_lazy('finances:wallets')
+
+    def form_valid(self, form):
+        # привязываем к текущему пользователю и задаём дефолтные поля
+        form.instance.user = self.request.user
+        form.instance.state = 'ACTIVE'
+        # version, img и т.д. можно задать здесь если нужно
+        response = super().form_valid(form)
+        messages.success(self.request, "Группа кошельков создана")
+        return response

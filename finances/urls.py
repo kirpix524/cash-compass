@@ -1,11 +1,13 @@
 from django.urls import path
 from django.views.generic import TemplateView
-from .views import CurrencyListView, CategoryListView, CategoryUpdateView, CategoryCreateView, WalletListView
+from .views import CurrencyListView, CategoryListView, CategoryUpdateView, CategoryCreateView, WalletListView, \
+    WalletGroupCreateView
 
 app_name = 'finances'
 
 urlpatterns = [
     path('wallets/', WalletListView.as_view(), name='wallets'),
+    path('wallet-groups/add/', WalletGroupCreateView.as_view(), name='walletgroup_create'),
     path('transactions/', TemplateView.as_view(template_name='finances/transactions.html'), name='transactions'),
     path('currencies/', CurrencyListView.as_view(), name='currencies'),
     path('categories/', CategoryListView.as_view(), name='categories'),
