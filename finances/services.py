@@ -146,10 +146,9 @@ class WalletImporter:
                 defaults={
                     "name":        e.get("name"),
                     "state":       e.get("state"),
-                    "type":        e.get("type"),
                     "_version":    e.get("ver"),
                     "item_type":   rec["item_type"],
-                    "image":       e.get("img"),
+                    "img":       e.get("img"),
                 }
             )
             if created:
@@ -183,13 +182,12 @@ class WalletImporter:
                 defaults={
                     "name":           e.get("name"),
                     "state":          e.get("state"),
-                    "type":           e.get("type"),
                     "_version":       e.get("ver"),
                     "item_type":      rec["item_type"],
                     "group":          grp,
                     "currency":       cur,
                     # текущий баланс будем считать/обновлять отдельно при транзакциях
-                    "image":          e.get("img"),
+                    "img":          e.get("img"),
                 }
             )
             if created:

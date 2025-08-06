@@ -113,30 +113,49 @@ class WalletListView(LoginRequiredMixin, FormMixin, ListView):
     form_class = WalletUploadForm
     success_url = reverse_lazy('finances:wallets')
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        # Обязательно: передаём POST и FILES
+        kwargs.update({
+            'data': self.request.POST or None,
+            'files': self.request.FILES or None,
+        })
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        # Подмешиваем форму в контекст, чтобы её можно было вывести в шаблоне
+        ctx['form'] = self.get_form()
+        return ctx
+
     def get_queryset(self):
         user = self.request.user
 
-        # 1) Берём все «реальные» группы
+        # 1) Собираем реальные группы
         groups = list(
             WalletGroup.objects
                 .filter(state='ACTIVE', user=user)
                 .annotate(total_balance=Sum('wallets__current_balance'))
                 .prefetch_related('wallets')
         )
+        # 2) Для каждой группы формируем iterable-список кошельков
+        for grp in groups:
+            grp.wallets_cache = list(
+                grp.wallets.filter(state='ACTIVE', user=user)
+            )
 
-        # 2) Кошельки без группы
+        # 3) Кошельки без группы
         ungrouped_qs = Wallet.objects.filter(
             group__isnull=True,
             state='ACTIVE',
             user=user
         )
-
         if ungrouped_qs.exists():
             total = ungrouped_qs.aggregate(sum=Sum('current_balance'))['sum'] or 0
             dummy = SimpleNamespace(
                 name='Без группы',
                 total_balance=total,
-                wallets=list(ungrouped_qs),
+                wallets_cache=list(ungrouped_qs),
                 is_virtual=True,
             )
             groups.insert(0, dummy)
@@ -150,5 +169,5 @@ class WalletListView(LoginRequiredMixin, FormMixin, ListView):
             count = importer.import_wallets()
             messages.success(request, f'Загружено {count} новых записей (группы + кошельки).')
         else:
-            messages.error(request, 'Ошибка загрузки файла.')
+            messages.error(request, f'Ошибка загрузки файла. {form.errors}')
         return redirect(self.success_url)

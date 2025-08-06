@@ -14,11 +14,11 @@
     <form method="post" enctype="multipart/form-data" class="mb-4">
       {% csrf_token %}
       <div class="mb-3">
-        <label for="wallets_file" class="form-label">JSON-файл с кошельками</label>
+        <label for="id_file" class="form-label">JSON-файл с кошельками</label>
         <input
           type="file"
-          name="wallets_file"
-          id="wallets_file"
+          name="file"
+          id="id_file"
           class="form-control"
           accept=".json"
           required
@@ -47,13 +47,15 @@
           </span>
 
           <ul class="ms-4">
-            {% for w in group.wallets %}
+            {% for w in group.wallets_cache %}
               <li>
                 {{ w.name }}
                 <span class="text-muted ms-1">
                   — {{ w.current_balance|default:"0" }}
                 </span>
               </li>
+            {% empty %}
+              <li>Кошельки не найдены.</li>
             {% endfor %}
           </ul>
         </li>
