@@ -211,7 +211,92 @@ class Wallet(models.Model):
         return self.name
 
 class Transaction(models.Model):
+    TRANSACTION_TYPE_CHOICES = [
+        ("EXPENSE", "EXPENSE"),
+        ("INCOME", "INCOME"),
+        ("TRANSFER", "TRANSFER"),
+    ]
+    TRANSACTION_STATE_CHOICES = [
+        ("ACTIVE", "ACTIVE"),
+        ("DELETED", "DELETED"),
+    ]
     wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE, related_name='transactions')
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
     # … остальные поля …
+
+
+    # из entries.*
+    guid          = models.CharField(max_length=64, unique=True, db_index=True)  # entries.guid
+    user          = models.ForeignKey(settings.AUTH_USER_MODEL,
+                                      on_delete=models.CASCADE,
+                                      related_name="transactions")
+    account_guid  = models.CharField(max_length=64)                               # entries.acc
+    occurred_at   = models.DateTimeField()                                        # entries.date
+    t_type        = models.CharField(max_length=8, choices=TRANSACTION_TYPE_CHOICES)  # entries.type
+    state         = models.CharField(max_length=7, choices=TRANSACTION_STATE_CHOICES, default="ACTIVE")
+    version       = models.IntegerField(default=0)                                 # entries.ver
+    description   = models.CharField(max_length=500, blank=True)                   # entries.desc
+    images        = models.JSONField(blank=True, null=True)                        # entries.imgs (список)
+    item_type     = models.CharField(max_length=32, default="TRANSACTION")         # itemType
+
+    # опциональные поля из некоторых записей
+    template_guid = models.CharField(max_length=64, blank=True, null=True)         # entries.template
+    template_key  = models.CharField(max_length=64, blank=True, null=True)         # entries.templateKey
+
+    # ВСЕ подстроки транзакции как есть (список словарей из entries.sub[]).
+    # Внутри будут поля: guid, type, from, to, val1, val2, cur1, cur2, state, ver …
+    # В from/to могут быть GUID кошелька или категории — мы их не резолвим здесь.
+    sub           = models.JSONField()                                             # entries.sub
+
+    # Удобные денормализованные суммы по активным подстрокам
+    total_src     = models.DecimalField(max_digits=20, decimal_places=2, default=0)  # Σ val1 ACTIVE
+    total_dst     = models.DecimalField(max_digits=20, decimal_places=2, default=0)  # Σ val2 ACTIVE
+
+    class Meta:
+        ordering = ["-occurred_at", "-id"]
+        indexes = [
+            Index(fields=["user", "occurred_at"]),
+            Index(fields=["t_type"]),
+            Index(fields=["state"]),
+        ]
+
+    def __str__(self):
+        return f"{self.t_type} @ {self.occurred_at:%Y-%m-%d %H:%M}"
+
+    # ── удобства ─────────────────────────────────────────────────────────────────
+
+    def recalc_totals(self):
+        """Пересчитать total_src/total_dst по ACTIVE-подстрокам."""
+        t1 = Decimal("0")
+        t2 = Decimal("0")
+        for line in (self.sub or []):
+            if line.get("state") == "DELETED":
+                continue
+            v1 = line.get("val1")
+            v2 = line.get("val2")
+            if v1 not in (None, ""):
+                t1 += Decimal(str(v1))
+            if v2 not in (None, ""):
+                t2 += Decimal(str(v2))
+        self.total_src = t1
+        self.total_dst = t2
+
+    def save(self, *args, **kwargs):
+        # если sub менялся (или сохраняем впервые) — пересчитаем суммы
+        update_fields = kwargs.get("update_fields")
+        if update_fields is None or "sub" in update_fields:
+            self.recalc_totals()
+            if update_fields is not None:
+                kwargs["update_fields"] = list(set(update_fields) | {"total_src", "total_dst"})
+        super().save(*args, **kwargs)
+
+    @property
+    def from_guids(self) -> set[str]:
+        """Множество всех from GUID по активным строкам."""
+        return {l["from"] for l in (self.sub or []) if l.get("state") != "DELETED" and "from" in l}
+
+    @property
+    def to_guids(self) -> set[str]:
+        """Множество всех to GUID по активным строкам."""
+        return {l["to"] for l in (self.sub or []) if l.get("state") != "DELETED" and "to" in l}
